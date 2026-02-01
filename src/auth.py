@@ -1,14 +1,21 @@
-import asyncio
+import os
+import sys
 import time
-from typing import Optional, Dict, Any
+from typing import Optional
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 from authlib.oauth2.rfc6749 import OAuth2Token
-from jose import jwt, JWTError
-import httpx
-from .config import settings
+
+# Handle imports properly
+try:
+    # When running as a module
+    from .config import settings
+except ImportError:
+    # When running directly
+    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+    from src.config import settings
 
 class DatabricksAuth:
-    """Handles OAuth2 authentication for Databricks"""
+    """Handles authentication for Databricks"""
     
     def __init__(self):
         self.oauth_client = None
@@ -24,16 +31,11 @@ class DatabricksAuth:
             client_id=settings.client_id,
             client_secret=settings.client_secret,
             token_endpoint=f"https://{settings.databricks_host}/oidc/v1/token",
-            authorization_endpoint=f"https://{settings.databricks_host}/oidc/v1/authorize",
             scope="all-apis",
-            token_endpoint_auth_method="client_secret_basic"
         )
     
     async def get_token(self) -> str:
         """Get valid access token"""
-        if self.token and time.time() < self.token_expiry:
-            return self.token["access_token"]
-            
         # For development with personal access token
         if settings.databricks_token:
             return settings.databricks_token
@@ -53,13 +55,8 @@ class DatabricksAuth:
         return self.token["access_token"]
     
     def validate_token(self, token: str) -> bool:
-        """Validate JWT token"""
-        try:
-            # Decode without verification to check expiry
-            decoded = jwt.get_unverified_claims(token)
-            return decoded.get("exp", 0) > time.time()
-        except JWTError:
-            return False
+        """Simple token validation"""
+        return bool(token and len(token) > 10)
 
 # Singleton instance
 auth_manager = DatabricksAuth()

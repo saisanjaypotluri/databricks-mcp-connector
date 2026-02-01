@@ -4,11 +4,8 @@ MCP Server for Databricks Integration
 """
 import asyncio
 import logging
-from contextlib import asynccontextmanager
 from fastmcp import FastMCP
 from .config import settings
-from . import tools
-from . import resources
 
 # Configure logging
 logging.basicConfig(
@@ -17,35 +14,24 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-@asynccontextmanager
-async def lifespan():
-    """Manage server lifecycle"""
-    logger.info(f"Starting {settings.mcp_server_name} v{settings.mcp_server_version}")
-    yield
-    logger.info("Shutting down MCP server")
-
-def create_app() -> FastMCP:
-    """Create and configure MCP server"""
+async def main():
+    """Main entry point"""
+    logger.info(f"Starting {settings.mcp_server_name}")
+    
     # Create server instance
     server = FastMCP(
         name=settings.mcp_server_name,
-        version=settings.mcp_server_version,
-        lifespan=lifespan
+        version="1.0.0"
     )
     
-    # Import tools and resources
-    # They automatically register with the server via decorators
+    # Import tools to register them
+    from . import tools
     
-    logger.info(f"MCP server created with {len(server.tools)} tools")
-    return server
-
-async def main():
-    """Main entry point"""
-    app = create_app()
+    logger.info(f"Server created with {len(server.tools)} tools")
     
     try:
         # Run the server
-        await app.run()
+        await server.run()
     except KeyboardInterrupt:
         logger.info("Received shutdown signal")
     except Exception as e:
